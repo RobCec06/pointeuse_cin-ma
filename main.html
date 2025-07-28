@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pointeuse Cinéma</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: url('base_plein_air_evenement.jpeg') no-repeat center center fixed;
+      background-size: cover;
+      background-color: #0d0d0d;
+      color: #f5f5f5;
+      margin: 0;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    #mainContent { display: none; }
+
+    .logo {
+      max-width: 180px;
+      height: auto;
+      display: block;
+      margin: 0 auto 1rem auto;
+      filter: drop-shadow(0 0 6px #fff);
+    }
+
+    h1 {
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+      text-shadow: 0 0 10px #ffffff88;
+    }
+
+    .profile {
+      margin-bottom: 2rem;
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 0 8px #ffffff44;
+    }
+
+    .profile h2 {
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+
+    button {
+      margin: 0.4rem;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      border: 1px solid #ffffff44;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #222;
+      color: #fff;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #444;
+      transform: scale(1.02);
+    }
+
+    .reset-btn {
+      background-color: #b71c1c;
+      border: none;
+      margin-top: 1.5rem;
+    }
+
+    #log {
+      margin-top: 2rem;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 0 10px #000;
+    }
+
+    .entry {
+      background-color: #1e1e1e;
+      padding: 0.6rem;
+      margin: 0.4rem 0;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .arrival { color: #76ff03; }
+    .departure { color: #ff6e40; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      button {
+        width: 100%;
+        margin: 0.3rem 0;
+      }
+      .profile {
+        padding: 0.8rem;
+      }
+      #log {
+        padding: 0.8rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .logo {
+        max-width: 140px;
+      }
+      h1 {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loginPage">
+  <h2>Connexion</h2>
+  <input type="text" id="username" placeholder="Nom d'utilisateur"><br><br>
+  <input type="password" id="password" placeholder="Mot de passe"><br><br>
+  <button onclick="login()">Se connecter</button>
+  <p id="loginError" style="color:red;"></p>
+</div>
+
+<div id="mainContent">
+  <img src="https://cinemadebeaulieu.com/wp-content/uploads/2016/06/logo_cinmadebeaulieu.png" alt="Logo Cinéma de Beaulieu" class="logo">
+  <h1>Pointeuse - Cinéma 🎨</h1>
+
+  <div class="profile">
+    <h2>👨‍💼 Robin</h2>
+    <button id="arrivee-Robin" onclick="pointer('Robin', 'arrivée')">📥 Arrivée</button>
+    <button id="depart-Robin" onclick="pointer('Robin', 'départ')">📤 Départ</button>
+  </div>
+
+  <div class="profile">
+    <h2>👩‍💼 Victoria</h2>
+    <button id="arrivee-Victoria" onclick="pointer('Victoria', 'arrivée')">📥 Arrivée</button>
+    <button id="depart-Victoria" onclick="pointer('Victoria', 'départ')">📤 Départ</button>
+  </div>
+
+  <button class="reset-btn" onclick="resetLog()">🗑️ Réinitialiser tout</button>
+  <button onclick="exportToPDF()">📄 Exporter en PDF</button>
+  <button onclick="exportToExcel()">📊 Exporter en Excel</button>
+
+  <div id="log"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js';
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBN6-Zbl4LSeCj0O4HOJIcRKq7ZAv41o6E",
+    authDomain: "pointeuse-cinema-beaulieu.firebaseapp.com",
+    projectId: "pointeuse-cinema-beaulieu",
+    storageBucket: "pointeuse-cinema-beaulieu.appspot.com",
+    messagingSenderId: "1042682924564",
+    appId: "1:1042682924564:web:9e989e2331373e35e22101",
+    measurementId: "G-7EPLLYK4KQ"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const userStates = {};
+
+  window.pointer = async function(nom, type) {
+    if (type === 'départ' && userStates[nom] !== 'arrivée') {
+      alert(`${nom} doit pointer une arrivée avant de pouvoir pointer un départ.`);
+      return;
+    }
+
+    const now = new Date();
+    const entry = {
+      nom,
+      type,
+      time: now.toLocaleTimeString('fr-FR'),
+      date: now.toLocaleDateString('fr-FR'),
+      timestamp: now.getTime()
+    };
+
+    try {
+      await addDoc(collection(db, "pointages"), entry);
+      userStates[nom] = type;
+      toggleButtons(nom, type);
+      window.displayLog();
+    } catch (e) {
+      console.error("Erreur Firebase:", e);
+    }
+  }
+
+  function toggleButtons(nom, type) {
+    const arriveeBtn = document.getElementById(`arrivee-${nom}`);
+    const departBtn = document.getElementById(`depart-${nom}`);
+
+    if (type === 'arrivée') {
+      arriveeBtn.disabled = true;
+      departBtn.disabled = false;
+    } else {
+      arriveeBtn.disabled = false;
+      departBtn.disabled = true;
+    }
+  }
+
+  window.displayLog = async function() {
+    const logContainer = document.getElementById("log");
+    logContainer.innerHTML = "Chargement...";
+
+    try {
+      const q = query(collection(db, "pointages"), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(q);
+
+      logContainer.innerHTML = "";
+      const entries = [];
+      querySnapshot.forEach(doc => entries.push(doc.data()));
+
+      entries.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = `entry ${entry.type === 'arrivée' ? 'arrival' : 'departure'}`;
+        div.textContent = `${entry.date} - ${entry.time} → ${entry.nom} ---> ${entry.type.toUpperCase()}`;
+        logContainer.appendChild(div);
+      });
+    } catch (e) {
+      logContainer.innerHTML = "Erreur de chargement.";
+      console.error("Erreur lors de l'affichage du log:", e);
+    }
+  }
+
+  window.resetLog = function() {
+    if (confirm("Voulez-vous vraiment effacer l'historique affiché sur le site ?")) {
+      const logContainer = document.getElementById("log");
+      logContainer.innerHTML = "";
+    }
+  }
+
+  window.exportToPDF = function () {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    script.onload = () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const entries = document.querySelectorAll('.entry');
+      let y = 10;
+      entries.forEach(entry => {
+        doc.text(entry.textContent, 10, y);
+        y += 10;
+      });
+      doc.save("pointages.pdf");
+    };
+    document.body.appendChild(script);
+  };
+
+  window.exportToExcel = function () {
+    let csvContent = "data:text/csv;charset=utf-8,Date,Heure,Nom,Type\n";
+    const entries = document.querySelectorAll('.entry');
+    entries.forEach(entry => {
+      const text = entry.textContent;
+      const match = text.match(/(\d{2}\/\d{2}\/\d{4}) - (\d{2}:\d{2}:\d{2}) → (.+?) a pointé une (.+)/);
+      if (match) {
+        const [, date, time, nom, type] = match;
+        csvContent += `${date},${time},${nom},${type}\n`;
+      }
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "pointages.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  window.login = function() {
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    const password = document.getElementById('password').value.trim();
+
+    const users = {
+      "robin": "cinema123",
+      "victoria": "cinema456"
+    };
+
+    if (users[username] === password) {
+      document.getElementById("loginPage").style.display = "none";
+      document.getElementById("mainContent").style.display = "block";
+      window.displayLog();
+    } else {
+      document.getElementById("loginError").textContent = "Identifiants incorrects.";
+    }
+  }
+
+  window.onload = function () {
+    document.getElementById("loginPage").style.display = "block";
+    document.getElementById("mainContent").style.display = "none";
+  }
+</script>
+</body>
+</html>
