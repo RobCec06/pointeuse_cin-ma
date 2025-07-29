@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pointeuse Cinéma</title>
   <style>
-    body {
+     body {
       font-family: 'Courier New', monospace;
       background: url('base_plein_air_evenement.jpeg') no-repeat center center fixed;
       background-size: cover;
@@ -23,7 +23,6 @@
       height: auto;
       display: block;
       margin: 0 auto 1rem auto;
-      filter: drop-shadow(0 0 6px #fff);
     }
 
     h1 {
@@ -79,10 +78,12 @@
       margin-left: auto;
       margin-right: auto;
       text-align: left;
-      background-color: rgba(0, 0, 0, 0.4);
+      background-color: rgba(0, 0, 0, 0.7);
       padding: 1rem;
       border-radius: 12px;
       box-shadow: 0 0 10px #000;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
     }
 
     .entry {
@@ -90,13 +91,12 @@
       padding: 0.6rem;
       margin: 0.4rem 0;
       border-radius: 6px;
-      font-family: 'Courier New', monospace;
+      color: #fff;
     }
 
     .arrival { color: #76ff03; }
     .departure { color: #ff6e40; }
 
-    /* Responsive */
     @media (max-width: 768px) {
       body {
         padding: 1rem;
@@ -127,7 +127,6 @@
   </style>
 </head>
 <body>
-
 <div id="loginPage">
   <h2>Connexion</h2>
   <input type="text" id="username" placeholder="Nom d'utilisateur"><br><br>
@@ -178,11 +177,6 @@
   const userStates = {};
 
   window.pointer = async function(nom, type) {
-    if (type === 'départ' && userStates[nom] !== 'arrivée') {
-      alert(`${nom} doit pointer une arrivée avant de pouvoir pointer un départ.`);
-      return;
-    }
-
     const now = new Date();
     const entry = {
       nom,
@@ -206,12 +200,14 @@
     const arriveeBtn = document.getElementById(`arrivee-${nom}`);
     const departBtn = document.getElementById(`depart-${nom}`);
 
-    if (type === 'arrivée') {
-      arriveeBtn.disabled = true;
-      departBtn.disabled = false;
-    } else {
-      arriveeBtn.disabled = false;
-      departBtn.disabled = true;
+    if (arriveeBtn && departBtn) {
+      if (type === 'arrivée') {
+        arriveeBtn.disabled = true;
+        departBtn.disabled = false;
+      } else {
+        arriveeBtn.disabled = false;
+        departBtn.disabled = true;
+      }
     }
   }
 
@@ -220,18 +216,45 @@
     logContainer.innerHTML = "Chargement...";
 
     try {
-      const q = query(collection(db, "pointages"), orderBy("timestamp", "desc"));
+      const q = query(collection(db, "pointages"), orderBy("timestamp", "asc"));
       const querySnapshot = await getDocs(q);
 
       logContainer.innerHTML = "";
       const entries = [];
       querySnapshot.forEach(doc => entries.push(doc.data()));
 
+      const grouped = {};
       entries.forEach(entry => {
-        const div = document.createElement("div");
-        div.className = `entry ${entry.type === 'arrivée' ? 'arrival' : 'departure'}`;
-        div.textContent = `${entry.date} - ${entry.time} → ${entry.nom} ---> ${entry.type.toUpperCase()}`;
-        logContainer.appendChild(div);
+        const key = `${entry.nom}-${entry.date}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(entry);
+      });
+
+      const orderedKeys = Object.keys(grouped).sort((a, b) => {
+        const ta = grouped[a][0].timestamp;
+        const tb = grouped[b][0].timestamp;
+        return tb - ta;
+      });
+
+      orderedKeys.forEach(key => {
+        const logs = grouped[key];
+        for (let i = 0; i < logs.length - 1; i++) {
+          const entry = logs[i];
+          const next = logs[i + 1];
+
+          if (entry.type === 'arrivée' && next.type === 'départ') {
+            const start = new Date(entry.timestamp);
+            const end = new Date(next.timestamp);
+            const diffMs = end - start;
+            const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffM = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+            const div = document.createElement("div");
+            div.className = "entry";
+            div.textContent = `${entry.date} - ${entry.time} → ${next.time} | ${entry.nom} | ${diffH}h ${diffM}`;
+            logContainer.appendChild(div);
+          }
+        }
       });
     } catch (e) {
       logContainer.innerHTML = "Erreur de chargement.";
@@ -246,32 +269,33 @@
     }
   }
 
-  window.exportToPDF = function () {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    script.onload = () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const entries = document.querySelectorAll('.entry');
-      let y = 10;
-      entries.forEach(entry => {
-        doc.text(entry.textContent, 10, y);
-        y += 10;
-      });
-      doc.save("pointages.pdf");
-    };
-    document.body.appendChild(script);
+ window.exportToPDF = function () {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  script.onload = () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(13); // 👈 réduction de la taille du texte PDF
+    const entries = document.querySelectorAll('.entry');
+    let y = 10;
+    entries.forEach(entry => {
+      doc.text(entry.textContent, 10, y);
+      y += 6; // réduit aussi l'espacement pour s'adapter à la taille
+    });
+    doc.save("pointages.pdf");
   };
+  document.body.appendChild(script);
+};
 
   window.exportToExcel = function () {
-    let csvContent = "data:text/csv;charset=utf-8,Date,Heure,Nom,Type\n";
+    let csvContent = "data:text/csv;charset=utf-8,Date,Heure début,Heure fin,Nom,Durée\n";
     const entries = document.querySelectorAll('.entry');
     entries.forEach(entry => {
       const text = entry.textContent;
-      const match = text.match(/(\d{2}\/\d{2}\/\d{4}) - (\d{2}:\d{2}:\d{2}) → (.+?) a pointé une (.+)/);
+const match = text.match(/(\d{2}\/\d{2}\/\d{4}) - (\d{2}:\d{2}:\d{2}) → (\d{2}:\d{2}:\d{2}) \| (.+?) \| (\d+)h (\d+)/);
       if (match) {
-        const [, date, time, nom, type] = match;
-        csvContent += `${date},${time},${nom},${type}\n`;
+        const [, date, start, end, name, h, m] = match;
+        csvContent += `${date},${start},${end},${name},${h}h ${m}min\n`;
       }
     });
     const encodedUri = encodeURI(csvContent);
@@ -286,10 +310,7 @@
   window.login = function() {
     const username = document.getElementById('username').value.trim().toLowerCase();
     const password = document.getElementById('password').value.trim();
-
-    const users = {
-      "admin": "cinema123"
-    };
+    const users = { "admin": "cinema123" };
 
     if (users[username] === password) {
       document.getElementById("loginPage").style.display = "none";
