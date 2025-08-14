@@ -14,8 +14,10 @@ body {
   background-color: #000;
   color: #f0f0f0;
   margin: 0;
-  padding: 2rem;
-  text-align: center;
+  min-height: 100vh;
+    display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 #mainContent {
@@ -45,6 +47,11 @@ h1 {
   box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
   max-width: 500px;
   transition: transform 0.2s ease;
+  
+  display: flex; /* Ajouté */
+  flex-direction: column; /* Ajouté */
+  align-items: center; /* Ajouté */
+  text-align: center; /* Ajouté */
 }
 
 .profile:hover {
@@ -122,6 +129,15 @@ button:disabled {
   font-weight: bold;
 }
 
+h1 {
+  margin-bottom: 1.5rem;
+  font-size: 2.4rem;
+  color: #ffd700;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+  letter-spacing: 1px;
+  text-align: center; /* Ajoute cette ligne */
+}
+
 @media (max-width: 768px) {
   body {
     padding: 1rem;
@@ -155,15 +171,101 @@ button:disabled {
   }
 }
 
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+    flex-direction: column;
+}
+
+
+.login-box {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 2rem 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  max-width: 350px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+  flex-direction: column;
+  align-items: center; /* Centrage horizontal des éléments */
+  justify-content: center;
+}
+
+.login-box h2 {
+  color: #ffd700;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.login-input {
+  width: 100%;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ffd70088;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border 0.3s;
+  font-family: 'DIN Condensed', sans-serif;
+}
+
+.login-input::placeholder {
+  color: #ccc;
+}
+
+.login-input:focus {
+  border: 1px solid #ffd700;
+}
+
+.login-button {
+  width: 100%;
+  padding: 0.8rem;
+  background-color: #222;
+  color: #fff;
+  border: 1px solid #ffd700;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.login-button:hover {
+  background-color: #333;
+  transform: scale(1.03);
+  box-shadow: 0 0 10px #ffd70055;
+}
+
+.login-error {
+  margin-top: 1rem;
+  color: #ff4d4d;
+  font-size: 0.95rem;
+}
+
+.login-input,
+.login-button {
+  width: 100%;
+  max-width: 280px; /* Ajout pour éviter qu’ils débordent trop */
+  text-align: center; /* Pour centrer le texte à l’intérieur */
+}
+
   </style>
 </head>
 <body>
-<div id="loginPage">
-  <h2>Connexion</h2>
-  <input type="text" id="username" placeholder="Nom d'utilisateur"><br><br>
-  <input type="password" id="password" placeholder="Mot de passe"><br><br>
-  <button onclick="login()">Se connecter</button>
-  <p id="loginError" style="color:red;"></p>
+<div id="loginPage" class="login-container">
+  <div class="login-box">
+    <h2>🎬 Connexion</h2>
+    <input type="text" id="username" placeholder="Nom d'utilisateur" class="login-input"><br>
+    <input type="password" id="password" placeholder="Mot de passe" class="login-input"><br>
+    <button onclick="login()" class="login-button">Se connecter</button>
+    <p id="loginError" class="login-error"></p>
+  </div>
 </div>
 
 <div id="mainContent">
@@ -172,14 +274,20 @@ button:disabled {
 
   <div class="profile">
     <h2>👨‍💼 Robin</h2>
-    <button id="arrivee-Robin" onclick="pointer('Robin', 'arrivée')">📥 Arrivée</button>
-    <button id="depart-Robin" onclick="pointer('Robin', 'départ')">📤 Départ</button>
+<div class="button-group">
+  <button id="arrivee-Robin" onclick="pointer('Robin', 'arrivée')">📥 Arrivée</button>
+  <button id="depart-Robin" onclick="pointer('Robin', 'départ')">📤 Départ</button>
+</div>
+
   </div>
 
   <div class="profile">
     <h2>👩‍💼 Victoria</h2>
-    <button id="arrivee-Victoria" onclick="pointer('Victoria', 'arrivée')">📥 Arrivée</button>
-    <button id="depart-Victoria" onclick="pointer('Victoria', 'départ')">📤 Départ</button>
+<div class="button-group">
+  <button id="arrivee-Robin" onclick="pointer('Victoria', 'arrivée')">📥 Arrivée</button>
+  <button id="depart-Robin" onclick="pointer('Victoria', 'départ')">📤 Départ</button>
+</div>
+
   </div>
 
   <button class="reset-btn" onclick="resetLog()">🗑️ Réinitialiser tout</button>
