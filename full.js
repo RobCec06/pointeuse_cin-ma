@@ -1,6 +1,13 @@
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js';
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js';
-
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  onSnapshot
+} from 'https://www.gstatic.com/firebasejs/10.5.2/firebase-firestore.js';
   const firebaseConfig = {
     apiKey: "AIzaSyBN6-Zbl4LSeCj0O4HOJIcRKq7ZAv41o6E",
     authDomain: "pointeuse-cinema-beaulieu.firebaseapp.com",
@@ -50,56 +57,61 @@
     }
   }
 
-  window.displayLog = async function() {
-    const logContainer = document.getElementById("log");
-    logContainer.innerHTML = "Chargement...";
+ window.displayLog = function () {
+  const logContainer = document.getElementById("log");
+  logContainer.innerHTML = "Chargement...";
 
-    try {
-      const q = query(collection(db, "pointages"), orderBy("timestamp", "asc"));
-      const querySnapshot = await getDocs(q);
+  const q = query(collection(db, "pointages"), orderBy("timestamp", "asc"));
 
-      logContainer.innerHTML = "";
-      const entries = [];
-      querySnapshot.forEach(doc => entries.push(doc.data()));
+  onSnapshot(q, (querySnapshot) => {
+    logContainer.innerHTML = "";
+    const entries = [];
+    querySnapshot.forEach(doc => entries.push(doc.data()));
 
-      const grouped = {};
-      entries.forEach(entry => {
-        const key = `${entry.nom}-${entry.date}`;
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(entry);
-      });
+    const grouped = {};
+    entries.forEach(entry => {
+      const key = `${entry.nom}-${entry.date}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(entry);
+    });
 
-      const orderedKeys = Object.keys(grouped).sort((a, b) => {
-        const ta = grouped[a][0].timestamp;
-        const tb = grouped[b][0].timestamp;
-        return tb - ta;
-      });
+    const orderedKeys = Object.keys(grouped).sort((a, b) => {
+      const ta = grouped[a][0].timestamp;
+      const tb = grouped[b][0].timestamp;
+      return tb - ta;
+    });
 
-      orderedKeys.forEach(key => {
-        const logs = grouped[key];
-        for (let i = 0; i < logs.length - 1; i++) {
-          const entry = logs[i];
-          const next = logs[i + 1];
+    orderedKeys.forEach(key => {
+      const logs = grouped[key];
+      for (let i = 0; i < logs.length; i++) {
+        const entry = logs[i];
+        const next = logs[i + 1];
 
-          if (entry.type === 'arrivée' && next.type === 'départ') {
-            const start = new Date(entry.timestamp);
-            const end = new Date(next.timestamp);
-            const diffMs = end - start;
-            const diffH = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffM = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const div = document.createElement("div");
+        div.className = "entry";
 
-            const div = document.createElement("div");
-            div.className = "entry";
-            div.textContent = `${entry.date} - ${entry.time} → ${next.time} | ${entry.nom} | ${diffH}h ${diffM}`;
-            logContainer.appendChild(div);
-          }
+        if (entry.type === 'arrivée' && (!next || next.type !== 'départ')) {
+          div.classList.add("arrival");
+          div.textContent = `${entry.date} - ${entry.nom} est arrivé à ${entry.time}`;
+          logContainer.appendChild(div);
+        } else if (entry.type === 'arrivée' && next && next.type === 'départ') {
+          const start = new Date(entry.timestamp);
+          const end = new Date(next.timestamp);
+          const diffMs = end - start;
+          const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+          const diffM = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+          div.textContent = `${entry.date} - ${entry.time} → ${next.time} | ${entry.nom} | ${diffH}h ${diffM}`;
+          logContainer.appendChild(div);
+          i++; // skip next
         }
-      });
-    } catch (e) {
-      logContainer.innerHTML = "Erreur de chargement.";
-      console.error("Erreur lors de l'affichage du log:", e);
-    }
-  }
+      }
+    });
+  }, (error) => {
+    console.error("Erreur temps réel:", error);
+    logContainer.innerHTML = "Erreur lors du chargement en direct.";
+  });
+}
 
   window.resetLog = function() {
     if (confirm("Voulez-vous vraiment effacer l'historique affiché sur le site ?")) {
